@@ -12,6 +12,12 @@ echo 'Arquivo A criado'
 
 echo 'Arquivo B criado'
 
+echo 'Executando serial'
+
 time ./lcsSerial
+
+echo 'Executando paralelo'
+
+time ./lcsParalelo
 
 make clean
