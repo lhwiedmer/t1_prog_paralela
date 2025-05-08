@@ -1,10 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <omp.h>
 
 #ifndef max
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #endif
+
+
+#ifndef min
+#define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
+#endif
+
+#define MIN_BLOCK_SIZE 16
+
+int blockSize = 16; // Size of the block to be processed in parallel
 
 typedef unsigned short mtype;
 
@@ -76,24 +86,43 @@ void initScoreMatrix(mtype ** scoreMatrix, int sizeA, int sizeB) {
 		scoreMatrix[i][0] = 0;
 }
 
-int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB) {
-	int i, j;
-	for (i = 1; i < sizeB + 1; i++) {
-		for (j = 1; j < sizeA + 1; j++) {
-			if (seqA[j - 1] == seqB[i - 1]) {
-				/* if elements in both sequences match,
-				 the corresponding score will be the score from
-				 previous elements + 1*/
-				scoreMatrix[i][j] = scoreMatrix[i - 1][j - 1] + 1;
-			} else {
-				/* else, pick the maximum value (score) from left and upper elements*/
-				scoreMatrix[i][j] =
-						max(scoreMatrix[i-1][j], scoreMatrix[i][j-1]);
-			}
-		}
-	}
+void processaBloco(mtype** scoreMatrix, int sizeA, int sizeB, int i_block, int j_block, const char* seqA, const char* seqB) {
+    int i_start = i_block * blockSize;
+    int j_start = j_block * blockSize;
+
+    int i_end = (i_start + blockSize < sizeB + 1) ? i_start + blockSize : sizeB + 1;
+    int j_end = (j_start + blockSize < sizeA + 1) ? j_start + blockSize : sizeA + 1;
+
+    for (int i = i_start; i < i_end; ++i) {
+        for (int j = j_start; j < j_end; ++j) {
+            if (i == 0 || j == 0) {
+                scoreMatrix[i][j] = 0;
+            } else if (seqB[i - 1] == seqA[j - 1]) {
+                scoreMatrix[i][j] = scoreMatrix[i - 1][j - 1] + 1;
+            } else {
+                scoreMatrix[i][j] = max(scoreMatrix[i - 1][j], scoreMatrix[i][j - 1]);
+            }
+        }
+    }
+}
+
+int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB, int numThreads) {
+	int bi = (sizeB + blockSize) / blockSize;
+    int bj = (sizeA + blockSize) / blockSize;
+
+    // Wavefront parallelism over diagonals
+    for (int d = 0; d <= bi + bj - 2; ++d) {
+        #pragma omp parallel for num_threads(numThreads)
+        for (int i = 0; i <= d; ++i) {
+            int j = d - i;
+            if (i < bi && j < bj) {
+                processaBloco(scoreMatrix, sizeA, sizeB, i, j, seqA, seqB);
+            }
+        }
+    }
 	return scoreMatrix[sizeB][sizeA];
 }
+
 void printMatrix(char * seqA, char * seqB, mtype ** scoreMatrix, int sizeA,
 		int sizeB) {
 	int i, j;
@@ -151,8 +180,15 @@ int main(int argc, char ** argv) {
 	//initialize LCS score matrix
 	initScoreMatrix(scoreMatrix, sizeA, sizeB);
 
+	int numThreads = atoi(argv[1]);
+
+	if (atoi(argv[2]) == 0) {
+		blockSize = max(min(sizeA, sizeB) / numThreads, MIN_BLOCK_SIZE);
+	} else {
+		blockSize = atoi(argv[2]);
+	}
 	//fill up the rest of the matrix and return final score (element locate at the last line and collumn)
-	mtype score = LCS(scoreMatrix, sizeA, sizeB, seqA, seqB);
+	mtype score = LCS(scoreMatrix, sizeA, sizeB, seqA, seqB, numThreads);
 
 	/* if you wish to see the entire score matrix,
 	 for debug purposes, define DEBUGMATRIX. */

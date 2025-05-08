@@ -1,23 +1,15 @@
-#!/bin/bash
-
 make
-
 echo 'Código compilado'
 
-./writeRandomIn fileA.in
+./writeRandomIn fileA.in 90000
+echo "Arquivo A criado tamanho=90000"
 
-echo 'Arquivo A criado'
+sleep 3
 
-./writeRandomIn fileB.in
+./writeRandomIn fileB.in 90000
+echo "Arquivo B criado tamanho=90000"
 
-echo 'Arquivo B criado'
+echo "Executando serial com teste de cache"
+perf stat -e cache-references,cache-misses ./lcsSerial
 
-echo 'Executando serial'
-
-time ./lcsSerial
-
-echo 'Executando paralelo'
-
-time ./lcsParalelo
-
-make clean
+./lcsParDiagBlock 12
