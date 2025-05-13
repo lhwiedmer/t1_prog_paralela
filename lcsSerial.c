@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <omp.h>
+
+
 
 #ifndef max
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
@@ -78,6 +81,8 @@ void initScoreMatrix(mtype ** scoreMatrix, int sizeA, int sizeB) {
 
 int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB) {
 	int i, j;
+	double start_time, endtime;
+	start_time = omp_get_wtime();
 	for (i = 1; i < sizeB + 1; i++) {
 		for (j = 1; j < sizeA + 1; j++) {
 			if (seqA[j - 1] == seqB[i - 1]) {
@@ -92,6 +97,8 @@ int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB) {
 			}
 		}
 	}
+	endtime = omp_get_wtime();
+	printf("lcsTime:%f\n", endtime - start_time);
 	return scoreMatrix[sizeB][sizeA];
 }
 void printMatrix(char * seqA, char * seqB, mtype ** scoreMatrix, int sizeA,

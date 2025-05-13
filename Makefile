@@ -8,16 +8,16 @@ all: lcsSerial writeRandomIn lcsParDiag lcsParDiagBlock
 
 noBlock: lcsSerial writeRandomIn lcsParDiag
 
-lcsSerial:
-	$(CC) $(CFLAGS) lcsSerial lcsSerial.c
+lcsSerial: lcsSerial.c
+	$(CC) $(OMPFLAGS) $(CFLAGS) lcsSerial lcsSerial.c
 
-lcsParDiag:
+lcsParDiag: lcsParDiag.c
 	$(CC) $(OMPFLAGS) $(CFLAGS) lcsParDiag lcsParDiag.c
 
-lcsParDiagBlock:
+lcsParDiagBlock: lcsParDiagBlock.c
 	$(CC) $(OMPFLAGS) $(CFLAGS) lcsParDiagBlock lcsParDiagBlock.c
 
-writeRandomIn:
+writeRandomIn: writeRandomIn.c
 	$(CC) $(CFLAGS) writeRandomIn writeRandomIn.c
 
 clean:

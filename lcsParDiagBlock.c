@@ -7,14 +7,11 @@
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #endif
 
-
 #ifndef min
 #define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
 #endif
 
-#define MIN_BLOCK_SIZE 16
-
-int blockSize = 16; // Size of the block to be processed in parallel
+int blockSize = 32; // Size of the block to be processed in parallel
 
 typedef unsigned short mtype;
 
@@ -110,6 +107,7 @@ int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB, int
 	int bi = (sizeB + blockSize) / blockSize;
     int bj = (sizeA + blockSize) / blockSize;
 
+	double startTime = omp_get_wtime();
     // Wavefront parallelism over diagonals
     for (int d = 0; d <= bi + bj - 2; ++d) {
         #pragma omp parallel for num_threads(numThreads)
@@ -120,6 +118,10 @@ int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB, int
             }
         }
     }
+
+	double endTime = omp_get_wtime();
+	printf("lcsTime:%f", endTime - startTime);
+
 	return scoreMatrix[sizeB][sizeA];
 }
 
@@ -159,6 +161,14 @@ void freeScoreMatrix(mtype **scoreMatrix, int sizeB) {
 	free(scoreMatrix);
 }
 
+unsigned int prev_pow2(unsigned int x) {
+    if (x == 0) {
+		return 0;
+	}
+    return 1U << (31 - __builtin_clz(x));
+}
+
+
 int main(int argc, char ** argv) {
 	// sequence pointers for both sequences
 	char *seqA, *seqB;
@@ -182,11 +192,10 @@ int main(int argc, char ** argv) {
 
 	int numThreads = atoi(argv[1]);
 
-	if (atoi(argv[2]) == 0) {
-		blockSize = max(min(sizeA, sizeB) / numThreads, MIN_BLOCK_SIZE);
-	} else {
+	if (argc == 3) {
 		blockSize = atoi(argv[2]);
 	}
+
 	//fill up the rest of the matrix and return final score (element locate at the last line and collumn)
 	mtype score = LCS(scoreMatrix, sizeA, sizeB, seqA, seqB, numThreads);
 
@@ -197,7 +206,6 @@ int main(int argc, char ** argv) {
 #endif
 
 	//print score
-	printf("\nScore: %d\n", score);
 
 	//free score matrix
 	freeScoreMatrix(scoreMatrix, sizeB);

@@ -3,10 +3,10 @@
 make
 echo 'Código compilado'
 
-# Clear the overall averages file at the beginning
-echo "tamanho|threads|block|media|desvio_padrao|cache_miss" > avg_results.txt
+echo "Tamaho da Entrada|N. Threads|Tamanho do Bloco|Tempo Médio|Desvio Padrão|Taxa de Cache-Miss Média|" > avg_results.txt
 
-for tam in 10000 30000 60000 90000 125000; do
+
+for tam in 20000 40000 60000 80000 100000; do
     ./writeRandomIn fileA.in $tam
     echo "Arquivo A criado tamanho=$tam"
 
@@ -25,11 +25,39 @@ for tam in 10000 30000 60000 90000 125000; do
     # Extract "time elapsed" for serial and compute average
     grep "seconds time elapsed" serial_results.txt | awk '{print $1}' > serial_times.txt
 
-    echo -n "Média do tempo serial: "
-    awk '{sum += $1} END {if (NR > 0) print sum / NR}' serial_times.txt
+
+    # Extract cache miss rates for serial
+    grep "cache-misses" serial_results.txt | tail -n 20 | awk -F'#' '{gsub(",", ".", $2); print $2}' | awk '{print $1}' > serial_miss_rates.txt
+
+    # Compute averages for serial run
+    read serial_miss_avg < <(
+        awk '{sum += $1} END {if (NR > 0) printf "%.6f", sum / NR}' serial_miss_rates.txt
+    )
+
+    read serial_avg serial_std < <(
+        awk '{
+            sum += $1; sumsq += $1 * $1; n++
+        }
+        END {
+            if (n > 0) {
+                mean = sum / n
+                stddev = sqrt((sumsq / n) - (mean * mean))
+                printf "%.6f %.6f", mean, stddev
+            }
+        }' serial_times.txt
+    )
+
+    echo "Média serial para tamanho=$tam: $serial_avg segundos"
+    echo "Desvio padrão serial: $serial_std segundos"
+
+    # Append to avg_results.txt with placeholders for thread and block as 0
+    echo "$tam|-|-|$serial_avg|$serial_std|$serial_miss_avg" >> avg_results.txt
+
+    rm -f serial_miss_rates.txt
+
 
     # PARALLEL runs
-    for block in 0 64; do 
+    for block in 1024; do
         for threads in 2 4 8 12; do
             echo "Executando paralelo com $threads threads e $block blockTam"
 
@@ -68,6 +96,7 @@ for tam in 10000 30000 60000 90000 125000; do
 
             echo "$tam|$threads|$block|$avg|$std|$miss_avg" >> avg_results.txt
 
+            rm -f tmp_miss_rates.txt serial_times.txt serial_results.txt
             rm -f tmp_times.txt
         done
     done
