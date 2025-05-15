@@ -86,10 +86,8 @@ void initScoreMatrix(mtype ** scoreMatrix, int sizeA, int sizeB) {
 void processaBloco(mtype** scoreMatrix, int sizeA, int sizeB, int i_block, int j_block, const char* seqA, const char* seqB) {
     int i_start = i_block * blockSize;
     int j_start = j_block * blockSize;
-
     int i_end = (i_start + blockSize < sizeB + 1) ? i_start + blockSize : sizeB + 1;
     int j_end = (j_start + blockSize < sizeA + 1) ? j_start + blockSize : sizeA + 1;
-
     for (int i = i_start; i < i_end; ++i) {
         for (int j = j_start; j < j_end; ++j) {
             if (i == 0 || j == 0) {
@@ -106,9 +104,6 @@ void processaBloco(mtype** scoreMatrix, int sizeA, int sizeB, int i_block, int j
 int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB, int numThreads) {
 	int bi = (sizeB + blockSize) / blockSize;
     int bj = (sizeA + blockSize) / blockSize;
-
-	double startTime = omp_get_wtime();
-    // Wavefront parallelism over diagonals
     for (int d = 0; d <= bi + bj - 2; ++d) {
         #pragma omp parallel for num_threads(numThreads)
         for (int i = 0; i <= d; ++i) {
@@ -118,10 +113,6 @@ int LCS(mtype ** scoreMatrix, int sizeA, int sizeB, char * seqA, char *seqB, int
             }
         }
     }
-
-	double endTime = omp_get_wtime();
-	printf("lcsTime:%f", endTime - startTime);
-
 	return scoreMatrix[sizeB][sizeA];
 }
 
@@ -206,6 +197,8 @@ int main(int argc, char ** argv) {
 #endif
 
 	//print score
+	printf("\nScore: %d\n", score);
+
 
 	//free score matrix
 	freeScoreMatrix(scoreMatrix, sizeB);
